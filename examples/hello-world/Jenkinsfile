@@ -1,0 +1,38 @@
+pipeline {
+    agent any
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhublogin')
+        IMAGE_NAME = "san21doc/hello-world"
+    }
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git 'https://github.com/SanjayGit2023/express.git'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                cd examples/hello-world
+                docker build -t $IMAGE_NAME:latest .
+                """
+            }
+        }
+        stage('Push to DockerHub') {
+            steps {
+                sh """
+                echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                docker push $IMAGE_NAME:latest
+                """
+            }
+        }
+        stage('Deploy with Argo CD') {
+            steps {
+                sh """
+                kubectl apply -f examples/hello-world/k8s/deployment.yaml
+                kubectl apply -f examples/hello-world/k8s/service.yaml
+                """
+            }
+        }
+    }
+}
